@@ -47,6 +47,23 @@ abd_checksum_SHA256(abd_t *abd, uint64_t size,
 	SHA2_CTX ctx;
 	zio_cksum_t tmp;
 
+#define HAVE_HASH_MB
+#if defined(__x86_64) && defined(_KERNEL) && defined(HAVE_HASH_MB)
+
+extern int mulbuf_sha256(void *buffer, size_t size, unsigned char *digest);
+
+	void *buffer;
+
+	if (abd_is_linear(abd) && size > 8 * 1024){
+		buffer = abd->abd_u.abd_linear.abd_buf;
+		//printk(KERN_ERR "job %p, size %d, flags %d", buffer, size, abd->abd_flags);
+		mulbuf_sha256(buffer, size, (unsigned char *)zcp);
+
+		return;
+	}
+
+#endif /* _KERNEL && __x86_64 && HAVE_HASH_MB */
+
 	SHA2Init(SHA256, &ctx);
 	(void) abd_iterate_func(abd, 0, size, sha_incremental, &ctx);
 	SHA2Final(&tmp, &ctx);
@@ -62,7 +79,9 @@ abd_checksum_SHA256(abd_t *abd, uint64_t size,
 	zcp->zc_word[1] = BE_64(tmp.zc_word[1]);
 	zcp->zc_word[2] = BE_64(tmp.zc_word[2]);
 	zcp->zc_word[3] = BE_64(tmp.zc_word[3]);
+
 }
+
 
 /*ARGSUSED*/
 void

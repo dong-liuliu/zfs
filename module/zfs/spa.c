@@ -92,6 +92,7 @@
 #include "zfs_prop.h"
 #include "zfs_comutil.h"
 
+#define HAVE_HASH_MB
 /*
  * The interval, in seconds, at which failed configuration cache file writes
  * should be retried.
@@ -899,7 +900,13 @@ spa_taskqs_init(spa_t *spa, zio_type_t t, zio_taskq_type_t q)
 	case ZTI_MODE_BATCH:
 		batch = B_TRUE;
 		flags |= TASKQ_THREADS_CPU_PCT;
+
+#if defined(__x86_64) && defined(_KERNEL) && defined(HAVE_HASH_MB)
+		/* Eightfold threads percentage of cpu */
+		value = zio_taskq_batch_pct * 8;
+#else
 		value = MIN(zio_taskq_batch_pct, 100);
+#endif
 		break;
 
 	default:
