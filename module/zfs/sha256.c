@@ -31,6 +31,10 @@
 #include <sys/sha2.h>
 #include <sys/abd.h>
 
+int zfs_hash_mb_disable = B_FALSE;
+module_param(zfs_hash_mb_disable, int, 0644);
+MODULE_PARM_DESC(zfs_hash_mb_disable, "Disable multi-buffer sha256");
+
 static int
 sha_incremental(void *buf, size_t size, void *arg)
 {
@@ -47,14 +51,13 @@ abd_checksum_SHA256(abd_t *abd, uint64_t size,
 	SHA2_CTX ctx;
 	zio_cksum_t tmp;
 
-#define HAVE_HASH_MB
 #if defined(__x86_64) && defined(_KERNEL) && defined(HAVE_HASH_MB)
 
 extern int mulbuf_sha256(void *buffer, size_t size, unsigned char *digest);
 
 	void *buffer;
 
-	if (abd_is_linear(abd) && size > 8 * 1024){
+	if (abd_is_linear(abd) && size > 8 * 1024 && !zfs_hash_mb_disable){
 		buffer = abd->abd_u.abd_linear.abd_buf;
 		//printk(KERN_ERR "job %p, size %d, flags %d", buffer, size, abd->abd_flags);
 		mulbuf_sha256(buffer, size, (unsigned char *)zcp);

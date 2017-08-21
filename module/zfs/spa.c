@@ -92,7 +92,6 @@
 #include "zfs_prop.h"
 #include "zfs_comutil.h"
 
-#define HAVE_HASH_MB
 /*
  * The interval, in seconds, at which failed configuration cache file writes
  * should be retried.
@@ -162,6 +161,7 @@ static inline int spa_load_impl(spa_t *spa, uint64_t, nvlist_t *config,
     char **ereport);
 static void spa_vdev_resilver_done(spa_t *spa);
 
+extern int zfs_hash_mb_disable;
 uint_t		zio_taskq_batch_pct = 75;	/* 1 thread per cpu in pset */
 id_t		zio_taskq_psrset_bind = PS_NONE;
 boolean_t	zio_taskq_sysdc = B_TRUE;	/* use SDC scheduling class */
@@ -903,7 +903,9 @@ spa_taskqs_init(spa_t *spa, zio_type_t t, zio_taskq_type_t q)
 
 #if defined(__x86_64) && defined(_KERNEL) && defined(HAVE_HASH_MB)
 		/* Eightfold threads percentage of cpu */
-		value = zio_taskq_batch_pct * 8;
+		if (!zfs_hash_mb_disable)
+			value = zio_taskq_batch_pct * 8;
+		else
 #else
 		value = MIN(zio_taskq_batch_pct, 100);
 #endif
